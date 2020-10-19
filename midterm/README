@@ -1,0 +1,7 @@
+This is the snapshot of the midterm. It just have the option of -c,-a,-t,-u. The rest of the option will be finished before the 10/19/2020.
+
+
+-- Edit by fubin , 10/19/2020
+This is the the midterm word. I have finished -a,-A,-d,-F,-f,-h,-I,-k,-l,-n,-R,-s options, and left the sort options. Because, when I tried to swap two point at the list, it will has an error and I did not find out why by now. I will try to finish the rest sort options later.
+And about the block size, I calculate it by ((stat -> st_size) / BLOCKSIZE) which answer is not similar with the original ls command. I will find out the right way to calculate it.
+I just use one file since there is some global values will be use in different methods. I will learn how to use different file which may make the code more readable.

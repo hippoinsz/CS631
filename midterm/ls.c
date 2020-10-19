@@ -95,7 +95,7 @@ main (int argc, char **argv) {
     st_str *p = root_str_buf;
     
     if (cflag || tflag || uflag) {
-        //sort_by_time(p);
+        sort_by_time(p);
     }
     
     while (p->next != NULL) {

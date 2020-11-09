@@ -1,0 +1,16 @@
+Lecture 1
+=================
+
+Before class:
+-----------------
+I carefully read the course website and syllabus.
+I watch the videoes of the first lecture.
+
+I learn some basic concept of the Linux, such as the pipe, process, signal and so on.
+
+I read the examples of the shell and c progrem.
+
+After class:
+-----------------
+Important take-away:
+- Make sure to use the flags('-Wall -Wextra -Werror') to compile the progrem.

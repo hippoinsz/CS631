@@ -1,0 +1,13 @@
+Lecture 2
+==============
+
+Before class
+--------------
+I read the slites and watch the viedos on the Youtube.
+
+The Unix use file descriptos to operate the files. We can use open() an close() to open and close a file. read(2) is to read the file, write(2) is write something into the file and lseek(2) is to find a offset of the file.
+
+After class
+--------------
+Important take-away:
+- Always close the fd after open a file. Because it make cause disk space full since the file is not closed, the space occupied by the original file will not be released.

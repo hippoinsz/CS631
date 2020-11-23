@@ -14,7 +14,7 @@
 
 #include "server.h"
 
-#define DEFAULTPORT 65345
+#define DEFAULTPORT 0
 
 void
 write_log(int clientfd, int log_fd);
@@ -58,23 +58,27 @@ main(int argc, char **argv) {
             case 'p':
                 port = atoi(optarg);
                 break;
+            default:
+                fprintf(stderr, "Usage: sws[−dh] [−c dir] [−i address] [−l file] [−p port] dir\n");
+                exit(EXIT_FAILURE);
+
         }
     }
+    
     sws_dir = argv[optind];
-    printf("sws_dir : %s\n",sws_dir);
     if (sws_dir == NULL) {
         perror("NO DIR \n the command should be :sws[−dh] [−c dir] [−i address] [−l file] [−p port] dir\n\n");
         exit(EXIT_FAILURE);
     }
     
-    if (l_flag == 1 && log_file != NULL) {
+    if (l_flag && log_file != NULL) {
         if ((log_fd = open(log_file, O_CREAT| O_APPEND| O_RDWR, 0777)) <= 0 ){
             perror("create log_file error");
             exit(EXIT_FAILURE);
         }
     }
     
-    if (i_flag == 1) {
+    if (i_flag) {
         if (is_valid_ipv4(ip))
             listenedfd = createIpv4Socket(&port, ip);
         if (is_valid_ipv6(ip))

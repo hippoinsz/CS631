@@ -1,7 +1,0 @@
-Msws	sws.c	/^main(int argc, char **argv) {$/
-build_ipv4_socket	server.c	/^build_ipv4_socket(u_short *port, const char *ip){ /
-build_ipv6_socket	server.c	/^build_ipv6_socket(u_short *port, const char *ip){$/
-daemon	README	/^1. - Program spawns daemon(Fubin)$/
-handle_request	server.c	/^handle_request(void* client) {$/
-is_valid_ipv4	server.c	/^is_valid_ipv4(const char *ipv4){$/
-is_valid_ipv6	server.c	/^is_valid_ipv6(const char *ipv6){$/

@@ -10,7 +10,6 @@
 #include <stdlib.h>
 #include <netinet/in.h>
 #include <time.h>
-#include <pthread/pthread.h>
 
 #include "server.h"
 
@@ -30,7 +29,7 @@ main(int argc, char **argv) {
 
     const char *cgi_path, *sws_dir, *ip, *log_file = NULL;
     
-    int listenedfd = 0,listenedfd_ipv6 = 0;
+    int listenedfd = 0;
     int clientfd;
     struct sockaddr_in client;
     char opt;
@@ -78,14 +77,22 @@ main(int argc, char **argv) {
         }
     }
     
+    if (c_flag)
+        printf("%s", cgi_path);
+        
+    if (h_flag)
+        printf("do something h");
+    
+    if (d_flag)
+        printf("do something d");
+    
     if (i_flag) {
         if (is_valid_ipv4(ip))
             listenedfd = createIpv4Socket(&port, ip);
         if (is_valid_ipv6(ip))
             listenedfd = createIpv6Socket(&port, ip);
-    }else {
+    } else {
         listenedfd = createIpv4Socket(&port, ip);
-        listenedfd_ipv6 = createIpv6Socket(&port, ip);
     }
     
     int client_len = sizeof(client);
@@ -112,7 +119,6 @@ void
 write_log(int clientfd, int log_fd){
     socklen_t length;
     struct sockaddr_storage server;
-    u_short port;
     char buf[BUFSIZ];
     int size;
     
@@ -129,7 +135,6 @@ write_log(int clientfd, int log_fd){
     if (server.ss_family == AF_INET) {
         char ip_address[INET_ADDRSTRLEN];
         struct sockaddr_in *s = (struct sockaddr_in *)&server;
-        port = ntohs(s->sin_port);
         if (inet_ntop(AF_INET, &s->sin_addr,ip_address, (socklen_t)INET_ADDRSTRLEN) == NULL) {
             perror("write log ipv4 inet_ntop error");
         }
@@ -144,7 +149,6 @@ write_log(int clientfd, int log_fd){
     }else {
         char ip_address[INET6_ADDRSTRLEN];
         struct sockaddr_in6 *s = (struct sockaddr_in6 *)&server;
-        port = ntohs(s->sin6_port);
         if (inet_ntop(AF_INET6, &s->sin6_addr, ip_address, INET6_ADDRSTRLEN) == NULL){
             perror("write log ipv6 inet_ntop error");
         }

@@ -27,8 +27,8 @@
 
 #endif /* server_h */
 
-int build_ipv4_socket(u_short *port, const char *ip);
-int build_ipv6_socket(u_short *port, const char *ip);
+int createIpv4Socket(u_short *port, const char *ip);
+int createIpv6Socket(u_short *port, const char *ip);
 
 int is_valid_ipv4(const char *ipv4);
 int is_valid_ipv6(const char *ipv6);

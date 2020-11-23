@@ -9,20 +9,26 @@
 #include <getopt.h>
 #include <stdlib.h>
 #include <netinet/in.h>
+#include <time.h>
 #include <pthread/pthread.h>
 
 #include "server.h"
 
 #define DEFAULTPORT 65345
 
-int c_flag = 0,d_flag = 0,h_flag = 0,i_flag = 0,l_flag = 0;
-
-u_short port = DEFAULTPORT;
-
-const char *cgi_path, *sws, *ip, *log_file = NULL;
+void
+write_log(int clientfd, int log_fd);
 
 int
 main(int argc, char **argv) {
+    
+    int c_flag = 0,d_flag = 0,h_flag = 0,i_flag = 0,l_flag = 0;
+
+    u_short port = DEFAULTPORT;
+
+    int log_fd = 0;
+
+    const char *cgi_path, *sws_dir, *ip, *log_file = NULL;
     
     int listenedfd = 0,listenedfd_ipv6 = 0;
     int clientfd;
@@ -54,37 +60,97 @@ main(int argc, char **argv) {
                 break;
         }
     }
+    sws_dir = argv[optind];
+    printf("sws_dir : %s\n",sws_dir);
+    if (sws_dir == NULL) {
+        perror("NO DIR \n the command should be :sws[−dh] [−c dir] [−i address] [−l file] [−p port] dir\n\n");
+        exit(EXIT_FAILURE);
+    }
+    
+    if (l_flag == 1 && log_file != NULL) {
+        if ((log_fd = open(log_file, O_CREAT| O_APPEND| O_RDWR, 0777)) <= 0 ){
+            perror("create log_file error");
+            exit(EXIT_FAILURE);
+        }
+    }
     
     if (i_flag == 1) {
         if (is_valid_ipv4(ip))
-            listenedfd = build_ipv4_socket(&port, ip);
+            listenedfd = createIpv4Socket(&port, ip);
         if (is_valid_ipv6(ip))
-            listenedfd = build_ipv6_socket(&port, ip);
+            listenedfd = createIpv6Socket(&port, ip);
     }else {
-        listenedfd = build_ipv4_socket(&port, ip);
-        listenedfd_ipv6 = build_ipv6_socket(&port, ip);
+        listenedfd = createIpv4Socket(&port, ip);
+        listenedfd_ipv6 = createIpv6Socket(&port, ip);
     }
     
     int client_len = sizeof(client);
-    /* use a new thread to listen ipv6 */
-    pthread_t client_thread;
-//        if (pthread_create(&ipv6_thread, NULL, accept_ipv6, (void*)&listenedfd_ipv6) != 0)
-//            perror("create ipv6 error");
+    
     while (1) {
         if((clientfd = accept(listenedfd, (struct sockaddr *)&client, (socklen_t *)&client_len)) == -1){
             perror("accept error");
             exit(EXIT_FAILURE);
         }
         
-        if(d_flag)
-            handle_request(&clientfd);
-        else { /* create a thread to handle 2 request */
-            if(pthread_create(&client_thread, NULL, handle_request, &clientfd) != 0)
-                perror("create thread error");
+        if (l_flag) {
+            write_log(clientfd, log_fd);
         }
+
+        handle_request(&clientfd);
         
         (void)close(listenedfd);
     }
     
     return  EXIT_SUCCESS;
+}
+
+void
+write_log(int clientfd, int log_fd){
+    socklen_t length;
+    struct sockaddr_storage server;
+    u_short port;
+    char buf[BUFSIZ];
+    int size;
+    
+    time_t timep;
+    struct tm *p;
+    time(&timep);
+    p = gmtime(&timep);
+    
+    if (getsockname(clientfd, (struct sockaddr *)&server, &length) != 0) {
+        perror("write log getting socket name error");
+        exit(EXIT_FAILURE);
+    }
+    
+    if (server.ss_family == AF_INET) {
+        char ip_address[INET_ADDRSTRLEN];
+        struct sockaddr_in *s = (struct sockaddr_in *)&server;
+        port = ntohs(s->sin_port);
+        if (inet_ntop(AF_INET, &s->sin_addr,ip_address, (socklen_t)INET_ADDRSTRLEN) == NULL) {
+            perror("write log ipv4 inet_ntop error");
+        }
+        
+        sprintf(buf, "%s %d-%d-%dT%d:%d:%d",ip_address, (1900+p->tm_year), (1+p->tm_mon), p->tm_mday, p->tm_hour, p->tm_min, p->tm_sec);
+        
+        size = (int)strlen(buf);
+        
+        if (write(log_fd, buf, size) != size){
+            perror("write log ipv4 write file error");
+        }
+    }else {
+        char ip_address[INET6_ADDRSTRLEN];
+        struct sockaddr_in6 *s = (struct sockaddr_in6 *)&server;
+        port = ntohs(s->sin6_port);
+        if (inet_ntop(AF_INET6, &s->sin6_addr, ip_address, INET6_ADDRSTRLEN) == NULL){
+            perror("write log ipv6 inet_ntop error");
+        }
+        
+        sprintf(buf, "%s %d-%d-%dT%d:%d:%d",ip_address, (1900+p->tm_year), (1+p->tm_mon), p->tm_mday, p->tm_hour, p->tm_min, p->tm_sec);
+        
+        size = (int)strlen(buf);
+        
+        if (write(log_fd, buf, size)!= size){
+            perror("write log ipv6 write file error");
+        }
+    }
 }

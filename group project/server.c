@@ -29,7 +29,7 @@ createIpv4Socket(u_short *port, const char *ip){
     if (ip)
         server.sin_addr.s_addr = inet_addr(ip);
     else
-        server.sin_addr.s_addr = INADDR_ANY;
+        server.sin_addr.s_addr = htonl(INADDR_ANY);
     
     if(bind(sock, (struct sockaddr *)&server, sizeof(server)) != 0){
         perror("binding ipv4 stream socket error");

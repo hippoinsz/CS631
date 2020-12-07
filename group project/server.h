@@ -26,20 +26,24 @@
 #include <fcntl.h>
 #include <dirent.h>
 #include <pthread.h>
+#include <libgen.h>
 #include <magic.h>
 
 #include "util.h"
+#include "cgi.h"
 
 #endif /* server_h */
 
-extern int d_flag, i_flag, l_flag;
+extern int d_flag, i_flag, l_flag, c_flag;
 
 void * accept_ipv6(void* listened);
 
 int createIpv4Socket(u_short *port, const char *ip);
 int createIpv6Socket(u_short *port, const char *ip);
 
-void deal_network(u_short *port, const char *ip, char *sws_dir, int log_fd);
+void deal_network(u_short *port, const char *ip, char *sws_dir, int log_fd,
+                  const char *cgi_dir
+                  );
 
 int get_request_info(int socket, char *buf, int size);
 

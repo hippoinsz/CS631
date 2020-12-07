@@ -114,7 +114,7 @@ main(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
     
-    deal_network(&port, ip, sws_dir, log_fd);
+    deal_network(&port, ip, sws_dir, log_fd, cgi_path);
     
     return  EXIT_SUCCESS;
 }

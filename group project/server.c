@@ -25,14 +25,20 @@
 
 char * sws;
 int log_fd;
+const char *cgi_path = NULL;
 
-void deal_network(u_short *port, const char *ip, char *sws_dir, int fd) {
+void deal_network(u_short *port, const char *ip, char *sws_dir, int fd,
+                  const char *cgi_dir) {
     int listenedfd, listenedfd_ipv6;
     int clientfd;
     struct sockaddr_in client;
     
     sws = sws_dir;
     log_fd = fd;
+    
+    if (cgi_dir != NULL) {
+        cgi_path = cgi_dir;
+    }
     
     if (i_flag == 1) {
         if (is_valid_ipv4(ip))
@@ -199,119 +205,119 @@ get_request_info(int socket, char *buf, int size){
 void *
 handle_request(void* client) {
     int clientfd = *(int *)client;
-        char buf[BUFSIZ];
-        char method[BUFSIZ];
-        char url[BUFSIZ];
-        char *path = NULL;
-        char temp[BUFSIZ];
-        char modify[BUFSIZ];
-        char http_version[BUFSIZ];
-        char *query_string = NULL;
-        int i = 0, j = 0;
-        int n = get_request_info(clientfd, buf, BUFSIZ);
-        if (log_fd > 0 && l_flag == 1){
-            write(log_fd, buf, strlen(buf) - 1);
-        }
-        struct stat st;
-        while(!isspace(buf[i]) && i < BUFSIZ - 1){
-            method[i] = buf[i];
-            i++;
-        }
-        method[i] = '\0';
-        printf("method: %s\n",method);
-        while (isspace(buf[i])) {
-            i++;
-        }
-        while (!isspace(buf[i]) && j < BUFSIZ - 1) {
-            url[j] = buf[i];
-            j++;
-            i++;
-        }
-        url[j] = '\0';
-        printf("url :%s\n",url);
-        query_string = url;
-        // handle_dir
-        if ((stat(sws, &st)) == -1) {
-            send_error(clientfd, NOT_FOUND, sws);
-            return NULL;
-        }
-        
-        path = (char *)malloc((size_t)BUFSIZ);
-        if(getcwd(path, BUFSIZ + 1) == NULL){
-            send_error(clientfd, NOT_FOUND, path);
-            return NULL;
-        }
-        
-        // url begin with /~ use replace to get new user
-        if (query_string[1] == '~') {
-            char path_buf[BUFSIZ];
-            char new_user[BUFSIZ];
-            char *p = NULL;
-            char *q = NULL;
-
-            query_string+=2;
-            
-            memset(path_buf,0,sizeof(path_buf));
-            strcpy(new_user,query_string);
-            q = strstr(query_string, "/");
-            p = strtok(new_user, "/");
-            p = getenv("USER");
-            if (p)
-                path = replace(path, p, new_user);
-            strcat(path,q);
-        }else
-            strcat(path,url);
-        printf("path: %s\n",path);
+    char buf[BUFSIZ];
+    char method[BUFSIZ];
+    char url[BUFSIZ];
+    char *path = NULL;
+    char temp[BUFSIZ];
+    char modify[BUFSIZ];
+    char http_version[BUFSIZ];
+    char *query_string = NULL;
+    int i = 0, j = 0;
+    int n = get_request_info(clientfd, buf, BUFSIZ);
+    if (log_fd > 0 && l_flag == 1){
+        write(log_fd, buf, strlen(buf) - 1);
+    }
+    struct stat st;
+    while(!isspace(buf[i]) && i < BUFSIZ - 1){
+        method[i] = buf[i];
+        i++;
+    }
+    method[i] = '\0';
+    printf("method: %s\n",method);
+    while (isspace(buf[i])) {
+        i++;
+    }
+    while (!isspace(buf[i]) && j < BUFSIZ - 1) {
+        url[j] = buf[i];
+        j++;
+        i++;
+    }
+    url[j] = '\0';
+    printf("url :%s\n",url);
+    query_string = url;
+    // handle_dir
+    if ((stat(sws, &st)) == -1) {
+        send_error(clientfd, NOT_FOUND, sws);
+        return NULL;
+    }
     
+    path = (char *)malloc((size_t)BUFSIZ);
+    if(getcwd(path, BUFSIZ + 1) == NULL){
+        send_error(clientfd, NOT_FOUND, path);
+        return NULL;
+    }
+    
+    // url begin with /~ use replace to get new user
+    if (query_string[1] == '~') {
+        char path_buf[BUFSIZ];
+        char new_user[BUFSIZ];
+        char *p = NULL;
+        char *q = NULL;
+
+        query_string+=2;
+        
+        memset(path_buf,0,sizeof(path_buf));
+        strcpy(new_user,query_string);
+        q = strstr(query_string, "/");
+        p = strtok(new_user, "/");
+        p = getenv("USER");
+        if (p)
+            path = replace(path, p, new_user);
+        strcat(path,q);
+    }else
+        strcat(path,url);
+    printf("path: %s\n",path);
+
+    while (isspace(buf[i]))
+        i++;
+    j = 0;
+    while (!isspace(buf[i]) && j < BUFSIZ - 1) {
+        http_version[j] = buf[i];
+        j++;
+        i++;
+    }
+    http_version[j] = '\0';
+    printf("version:%s\n",http_version);
+    // not GET and HEAD method
+    if (strcmp(method, "GET") && strcmp(method, "HEAD")) {
+        send_error(clientfd, BAD_REQUEST, path);
+        return NULL;
+    }
+
+    if ((n = strcmp(http_version, "HTTP/1.0")) !=0) {
+        send_error(clientfd, BAD_REQUEST, path);
+        return NULL;
+    }
+    // get if-modify-scince timestamp
+    while ((n = strcmp(buf, "\n")) != 0 ) {
+        i = 0;
+        j = 0;
+        get_request_info(clientfd, buf, sizeof(buf));
         while (isspace(buf[i]))
             i++;
-        j = 0;
         while (!isspace(buf[i]) && j < BUFSIZ - 1) {
-            http_version[j] = buf[i];
-            j++;
+            temp[j] = buf[i];
             i++;
+            j++;
         }
-        http_version[j] = '\0';
-        printf("version:%s\n",http_version);
-        // not GET and HEAD method
-        if (strcmp(method, "GET") && strcmp(method, "HEAD")) {
-            send_error(clientfd, BAD_REQUEST, path);
-            return NULL;
+        temp[j] = '\0';
+        if ((n = strcmp(temp, "If-Modified-Since:")) == 0){
+            strcpy(modify,buf);
+            printf("%s\n",modify);
         }
-  
-        if ((n = strcmp(http_version, "HTTP/1.0")) !=0) {
-            send_error(clientfd, BAD_REQUEST, path);
-            return NULL;
-        }
-        // get if-modify-scince timestamp
-        while ((n = strcmp(buf, "\n")) != 0 ) {
-            i = 0;
-            j = 0;
-            get_request_info(clientfd, buf, sizeof(buf));
-            while (isspace(buf[i]))
-                i++;
-            while (!isspace(buf[i]) && j < BUFSIZ - 1) {
-                temp[j] = buf[i];
-                i++;
-                j++;
-            }
-            temp[j] = '\0';
-            if ((n = strcmp(temp, "If-Modified-Since:")) == 0){
-                strcpy(modify,buf);
-                printf("%s\n",modify);
-            }
-        }
-    
-        if ((n = strcmp(method, "HEAD")) == 0)
-            handle_head(clientfd, path);
-    
-        if((n = strcmp(method, "GET")) == 0){
-            handle_get(clientfd, path, modify);
-            bzero(modify, sizeof(modify));
-        }
-    
-        close(clientfd);
-        return NULL;
+    }
+
+    if ((n = strcmp(method, "HEAD")) == 0)
+        handle_head(clientfd, path);
+
+    if((n = strcmp(method, "GET")) == 0){
+        handle_get(clientfd, path, modify);
+        bzero(modify, sizeof(modify));
+    }
+
+    close(clientfd);
+    return NULL;
 }
 
 void handle_head(int clientfd, const char *path){
@@ -326,85 +332,106 @@ void handle_head(int clientfd, const char *path){
 
 void handle_get(int clientfd, const char *path, const char *modify){
     int dp, n, c;
-        char buf[TIMESIZ];
-        char *content_buf;
-        char *home = NULL;
-        char abs_path[BUFSIZ];
-        struct stat st;
-        struct stat sp;
-        struct tm ts;
-        // abs_path should not out of with home/
-        home = (char *)malloc((size_t)BUFSIZ);
-        realpath(path, abs_path);
-        home = "/home";
-        // the path should not get out of /home or /Users
-        if ((n = strncmp(abs_path, home, strlen(home))) != 0 ) {
+    char buf[TIMESIZ];
+    char *content_buf;
+    char *home = NULL;
+    char abs_path[BUFSIZ];
+    struct stat st;
+    struct stat sp;
+    struct tm ts;
+    // abs_path should not out of with home/
+    home = (char *)malloc((size_t)BUFSIZ);
+    realpath(path, abs_path);
+    home = "/home";
+    
+    char *npath = (char *)malloc(strlen(path)+1);
+    strcpy(npath, path);
+    
+    if (c_flag && strcmp(basename(npath), cgi_path) == 0) {
+        /* Test Existence */
+        if (access(path, R_OK) != 0) {
+            /* Not Exists*/
+            /* Or permission denied*/
             send_error(clientfd, FORBIDDEN, path);
             return;
-        }
-        if ((dp = open(path, O_RDONLY)) < 0){
+        } else if (access(path, X_OK) != 0) {
+            /* Not Executable*/
             send_error(clientfd, FORBIDDEN, path);
-            close(dp);
             return;
-        }
-        if ((stat(path, &st)) == -1) {
-            send_error(clientfd, NOT_FOUND, path);
-            return;
-        }
-        ts = *gmtime((time_t*)&st.st_mtimespec);
-        strftime(buf, sizeof(buf), "If-Modified-Since: %a, %d %b %Y %H:%M:%S GMT\n", &ts);
-        if ((n = strcmp(buf, modify)) == 0) {
-            send_error(clientfd, NOT_MODIFIED, path);
-            return;
-        }else {
+        } else {
             send_success(clientfd, path);
+            run_cgi(path, NULL, 0, clientfd);
         }
-        // For request a directory
-        if (S_ISDIR(st.st_mode)) {
-            char temp[BUFSIZ];
-            strcpy(temp,path);
-            c = (int)strlen(temp) - 1;
-            temp[c] == '/' ? strcat(temp, "index.html") : strcat(temp, "/index.html");
-            
-            // if there has an index.html
-            if (stat(temp, &sp) == 0) {
-                send(clientfd, buf, strlen(buf), 0);
-                if (log_fd > 0 && l_flag == 1)
-                    write(log_fd,buf, strlen(buf));
-                send(clientfd,"\r\n",strlen("\r\n"),0);
-                close(dp);
-                dp = open(temp, O_RDONLY);
-                memset(buf,0,sizeof(buf));
-                while ((n = read(dp, buf, BUFSIZ)) > 0)
-                    send(clientfd, buf,strlen(buf),0);
-                send(clientfd,"\r\n",strlen("\r\n"),0);
-                close(dp);
-                return;
-            }
-            
-            // if not have index
-            content_buf = generate_index(path, abs_path, clientfd);
-            
-            sprintf(buf,"Content-Length: %d\r\n",(int)strlen(content_buf));
+    }
+    
+    // the path should not get out of /home or /Users
+    if ((n = strncmp(abs_path, home, strlen(home))) != 0 ) {
+        send_error(clientfd, FORBIDDEN, path);
+        return;
+    }
+    if ((dp = open(path, O_RDONLY)) < 0){
+        send_error(clientfd, FORBIDDEN, path);
+        close(dp);
+        return;
+    }
+    if ((stat(path, &st)) == -1) {
+        send_error(clientfd, NOT_FOUND, path);
+        return;
+    }
+    ts = *gmtime((time_t*)&st.st_mtimespec);
+    strftime(buf, sizeof(buf), "If-Modified-Since: %a, %d %b %Y %H:%M:%S GMT\n", &ts);
+    if ((n = strcmp(buf, modify)) == 0) {
+        send_error(clientfd, NOT_MODIFIED, path);
+        return;
+    }else {
+        send_success(clientfd, path);
+    }
+    // For request a directory
+    if (S_ISDIR(st.st_mode)) {
+        char temp[BUFSIZ];
+        strcpy(temp,path);
+        c = (int)strlen(temp) - 1;
+        temp[c] == '/' ? strcat(temp, "index.html") : strcat(temp, "/index.html");
+        
+        // if there has an index.html
+        if (stat(temp, &sp) == 0) {
             send(clientfd, buf, strlen(buf), 0);
             if (log_fd > 0 && l_flag == 1)
-                write(log_fd, buf, strlen(buf));
+                write(log_fd,buf, strlen(buf));
             send(clientfd,"\r\n",strlen("\r\n"),0);
-            send(clientfd, content_buf, strlen(content_buf), 0);
-        }
-        // For request a file
-        else {
-            sprintf(buf,"Content-Length: %d\r\n",(int)st.st_size);
-            send(clientfd, buf, strlen(buf), 0);
-            if (log_fd > 0 && l_flag == 1)
-                write(log_fd, buf, strlen(buf));
-            send(clientfd,"\r\n",strlen("\r\n"),0);
+            close(dp);
+            dp = open(temp, O_RDONLY);
             memset(buf,0,sizeof(buf));
             while ((n = read(dp, buf, BUFSIZ)) > 0)
                 send(clientfd, buf,strlen(buf),0);
             send(clientfd,"\r\n",strlen("\r\n"),0);
             close(dp);
+            return;
         }
+        
+        // if not have index
+        content_buf = generate_index(path, abs_path, clientfd);
+        
+        sprintf(buf,"Content-Length: %d\r\n",(int)strlen(content_buf));
+        send(clientfd, buf, strlen(buf), 0);
+        if (log_fd > 0 && l_flag == 1)
+            write(log_fd, buf, strlen(buf));
+        send(clientfd,"\r\n",strlen("\r\n"),0);
+        send(clientfd, content_buf, strlen(content_buf), 0);
+    }
+    // For request a file
+    else {
+        sprintf(buf,"Content-Length: %d\r\n",(int)st.st_size);
+        send(clientfd, buf, strlen(buf), 0);
+        if (log_fd > 0 && l_flag == 1)
+            write(log_fd, buf, strlen(buf));
+        send(clientfd,"\r\n",strlen("\r\n"),0);
+        memset(buf,0,sizeof(buf));
+        while ((n = read(dp, buf, BUFSIZ)) > 0)
+            send(clientfd, buf,strlen(buf),0);
+        send(clientfd,"\r\n",strlen("\r\n"),0);
+        close(dp);
+    }
 }
 
 int

@@ -4,7 +4,7 @@ TARGET := sws
 CC := cc
 CFLAGS := -Wall -Werror -Wextra -g -lmagic -lpthread
 
-OBJS = sws.o server.o util.o
+OBJS = sws.o server.o util.o cgi.o
 
 all: ${TARGET}
 

@@ -1,18 +1,14 @@
 TARGET := sws
 
-CC := gcc
-CFLAGS := -Wall -Werror -Wextra
+CC := cc
+CFLAGS := -Wall -Werror -Wextra -g -lmagic -lpthread
 
-SRCS = sws.c server.c
-INC = -I./.
+OBJS = sws.o server.o util.o
 
-OBJS = $(SRCS:.c=.o)
+all: ${TARGET}
 
 $(TARGET) : $(OBJS)
-	$(CC) -o $@ $^
-
-%.o : %.c
-	$(CC) $(CFLAGS) $(INC) -o $@ -c $<
+        $(CC) ${CFLAGS} ${OBJS} -o ${TARGET}
 
 clean:
-	rm -rf $(TARGET) $(OBJS)
+        rm -rf $(TARGET) $(OBJS)

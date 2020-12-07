@@ -12,26 +12,24 @@
 #include <time.h>
 
 #include "server.h"
+#include "util.h"
 
-#define DEFAULTPORT 0
+#define DEFAULTPORT 8080
+
+int c_flag = 0, d_flag = 0, h_flag = 0, l_flag = 0, p_flag = 0, i_flag = 0;
 
 void
 write_log(int clientfd, int log_fd);
 
 int
 main(int argc, char **argv) {
-    
-    int c_flag = 0,d_flag = 0,h_flag = 0,i_flag = 0,l_flag = 0;
 
     u_short port = DEFAULTPORT;
 
     int log_fd = 0;
 
-    const char *cgi_path, *sws_dir, *ip, *log_file = NULL;
+    char *cgi_path = NULL, *sws_dir = NULL, *ip = NULL, *log_file = NULL;
     
-    int listenedfd = 0;
-    int clientfd;
-    struct sockaddr_in client;
     char opt;
     
     while ((opt = getopt(argc, argv, "c:dhi:l:p:")) != -1) {
@@ -55,6 +53,7 @@ main(int argc, char **argv) {
                 log_file = optarg;
                 break;
             case 'p':
+                p_flag = 1;
                 port = atoi(optarg);
                 break;
             default:
@@ -70,6 +69,16 @@ main(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
     
+    if (h_flag == 1) {
+        printf("Usage: sws[−dh] [−c dir] [−i address] [−l file] [−p port] dir\n");
+        exit(EXIT_SUCCESS);
+    }
+    
+    if (!validate_path(sws_dir)) {
+        fprintf(stderr, "%s is not a validated directory!\n", sws_dir);
+        exit(EXIT_FAILURE);
+    }
+    
     if (l_flag && log_file != NULL) {
         if ((log_fd = open(log_file, O_CREAT| O_APPEND| O_RDWR, 0777)) <= 0 ){
             perror("create log_file error");
@@ -77,88 +86,35 @@ main(int argc, char **argv) {
         }
     }
     
-    if (c_flag)
-        printf("%s", cgi_path);
-        
-    if (h_flag)
-        printf("do something h");
-    
-    if (d_flag)
-        printf("do something d");
-    
-    if (i_flag) {
-        if (is_valid_ipv4(ip))
-            listenedfd = createIpv4Socket(&port, ip);
-        if (is_valid_ipv6(ip))
-            listenedfd = createIpv6Socket(&port, ip);
-    } else {
-        listenedfd = createIpv4Socket(&port, ip);
-    }
-    
-    int client_len = sizeof(client);
-    
-    while (1) {
-        if((clientfd = accept(listenedfd, (struct sockaddr *)&client, (socklen_t *)&client_len)) == -1){
-            perror("accept error");
+    if (c_flag) {
+        if (cgi_path != NULL && !validate_path(cgi_path)) {
+            fprintf(stderr, "%s is not a validated CGI directory!\n", cgi_path);
             exit(EXIT_FAILURE);
         }
+    }
         
-        if (l_flag) {
-            write_log(clientfd, log_fd);
+    if (p_flag) {
+        if (!validate_port(port)) {
+            fprintf(stderr, "Invalid port number!\n");
+            exit(EXIT_FAILURE);
         }
-
-        handle_request(&clientfd);
-        
-        (void)close(listenedfd);
     }
     
-    return  EXIT_SUCCESS;
-}
-
-void
-write_log(int clientfd, int log_fd){
-    socklen_t length;
-    struct sockaddr_storage server;
-    char buf[BUFSIZ];
-    int size;
+    if (d_flag)
+        printf("Debuging mode\n");
+    else {
+        if (daemon(1, 0) == -1) {
+            fprintf(stderr, "daemon err!\n");
+            exit(EXIT_FAILURE);
+        }
+    }
     
-    time_t timep;
-    struct tm *p;
-    time(&timep);
-    p = gmtime(&timep);
-    
-    if (getsockname(clientfd, (struct sockaddr *)&server, &length) != 0) {
-        perror("write log getting socket name error");
+    if (i_flag && !is_valid_ipv4(ip) && !is_valid_ipv6(ip)){
+        perror("no vaild ip to create server");
         exit(EXIT_FAILURE);
     }
     
-    if (server.ss_family == AF_INET) {
-        char ip_address[INET_ADDRSTRLEN];
-        struct sockaddr_in *s = (struct sockaddr_in *)&server;
-        if (inet_ntop(AF_INET, &s->sin_addr,ip_address, (socklen_t)INET_ADDRSTRLEN) == NULL) {
-            perror("write log ipv4 inet_ntop error");
-        }
-        
-        sprintf(buf, "%s %d-%d-%dT%d:%d:%d",ip_address, (1900+p->tm_year), (1+p->tm_mon), p->tm_mday, p->tm_hour, p->tm_min, p->tm_sec);
-        
-        size = (int)strlen(buf);
-        
-        if (write(log_fd, buf, size) != size){
-            perror("write log ipv4 write file error");
-        }
-    }else {
-        char ip_address[INET6_ADDRSTRLEN];
-        struct sockaddr_in6 *s = (struct sockaddr_in6 *)&server;
-        if (inet_ntop(AF_INET6, &s->sin6_addr, ip_address, INET6_ADDRSTRLEN) == NULL){
-            perror("write log ipv6 inet_ntop error");
-        }
-        
-        sprintf(buf, "%s %d-%d-%dT%d:%d:%d",ip_address, (1900+p->tm_year), (1+p->tm_mon), p->tm_mday, p->tm_hour, p->tm_min, p->tm_sec);
-        
-        size = (int)strlen(buf);
-        
-        if (write(log_fd, buf, size)!= size){
-            perror("write log ipv6 write file error");
-        }
-    }
+    deal_network(&port, ip, sws_dir, log_fd);
+    
+    return  EXIT_SUCCESS;
 }

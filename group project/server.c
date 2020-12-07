@@ -10,13 +10,16 @@
 #define LISTENSIZE 5
 #define CONTENTBUF 20000
 
-#define BAD_REQUEST "HTTP/1.0 400 Bad Request\r\n"
+#define BAD_REQUEST "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">\n<html><head>\n<title>400 Bad Request</title>\n</head><body>\n<h1>Bad Request</h1>\n<p>Your browser sent a request that this server could not understand.<br />\n</p>\n</body></html>\n"
+#define FORBIDDEN "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">\n<html><head>\n<title>403 Forbidden</title>\n</head><body>\n<h1>403 Forbidden</h1>\n<p>Your browser sent a request that this server forbid.<br />\n</p>\n</body></html>\n"
+#define NOT_FOUND "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">\n<html><head>\n<title>404 Not Found</title>\n</head><body>\n<h1>404 Not Found</h1>\n<p>Your browser sent a request that this server could not find.<br />\n</p>\n</body></html>\n"
+#define SERVER_ERROR "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">\n<html><head>\n<title>500 Internal Server Error</title>\n</head><body>\n<h1>500 Internal Server Error</h1>\n<p>Your browser sent a request that this server get error.<br />\n</p>\n</body></html>\n"
+#define NOT_MODIFIED "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">\n<html><head>\n<title>304 Not Modified</title>\n</head><body>\n<h1>304 Not Modified</h1>\n<p>Your browser sent a request that the file is not modified.<br />\n</p>\n</body></html>\n"
+#define STR_HTML_DOCTYPE "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\"><html xmlns='http://www.w3.org/1999/xhtml' xml:lang='en' lang='en'>"
+
 #define CONTENT "Content-Type: text/html\r\n"
 #define CONNECT_SUCCESS "HTTP/1.0 200 OK\r\n"
-#define NOT_MODIFIED "HTTP/1.0 304 Not Modified\r\n"
-#define NOT_FOUND "HTTP/1.0 404 Not Found\r\n"
-#define SERVER_ERROR "HTTP/1.0 500 Internal Server Error\r\n"
-#define SERVER_STRING "Server: gqq version 1.0\r\n"
+#define SERVER_STRING "Server: sws 1.0\r\n"
 
 #define TIMESIZ BUFSIZ
 
@@ -169,16 +172,16 @@ createIpv6Socket(u_short *port, const char *ip){
     return sock;
 }
 
-long
+int
 get_request_info(int socket, char *buf, int size){
     int i = 0;
-    long len = 0;
+    int len = 0;
     char c = '\0';
     while (i < size - 1 && (c !='\n')) {
         len = recv(socket, &c, 1, 0);
         if (len > 0) {
             if(c == '\r'){
-                len = recv(socket, &c, 1, MSG_PEEK); // MSG_PEEK test next \n without change the next recv
+                len = recv(socket, &c, 1, MSG_PEEK); 
                 if((len > 0) && (c == '\n'))
                     recv(socket, &c, 1, 0);
                 else
@@ -205,10 +208,9 @@ handle_request(void* client) {
         char http_version[BUFSIZ];
         char *query_string = NULL;
         int i = 0, j = 0;
-        int n = read_line(clientfd, buf, BUFSIZ);
+        int n = get_request_info(clientfd, buf, BUFSIZ);
         if (log_fd > 0 && l_flag == 1){
             write(log_fd, buf, strlen(buf) - 1);
-            write(log_fd, " ", strlen(" "));
         }
         struct stat st;
         while(!isspace(buf[i]) && i < BUFSIZ - 1){
@@ -228,34 +230,27 @@ handle_request(void* client) {
         url[j] = '\0';
         printf("url :%s\n",url);
         query_string = url;
-        /* handle_url */
+        // handle_dir
         if ((stat(sws, &st)) == -1) {
-            perror("stat error\n");
-            exit(EXIT_FAILURE);
-        }
-        if (!S_ISDIR(st.st_mode)) {
-            perror("not a dir\n");
-            exit(EXIT_FAILURE);
-        }
-        if (chdir(sws) == -1) {
-            perror("change dir error");
-            exit(EXIT_FAILURE);
-        }
-        path = (char *)malloc((size_t)BUFSIZ);
-        if(getcwd(path, BUFSIZ + 1) == NULL){
-            perror("get path error\n");
-            exit(EXIT_FAILURE);
+            send_error(clientfd, NOT_FOUND, sws);
+            return NULL;
         }
         
-        /* url begin with /~ use replace to get new user */
+        path = (char *)malloc((size_t)BUFSIZ);
+        if(getcwd(path, BUFSIZ + 1) == NULL){
+            send_error(clientfd, NOT_FOUND, path);
+            return NULL;
+        }
+        
+        // url begin with /~ use replace to get new user
         if (query_string[1] == '~') {
             char path_buf[BUFSIZ];
             char new_user[BUFSIZ];
             char *p = NULL;
             char *q = NULL;
-            /*delete ~ */
-            query_string++;
-            query_string++;
+
+            query_string+=2;
+            
             memset(path_buf,0,sizeof(path_buf));
             strcpy(new_user,query_string);
             q = strstr(query_string, "/");
@@ -278,47 +273,21 @@ handle_request(void* client) {
         }
         http_version[j] = '\0';
         printf("version:%s\n",http_version);
-        /* not GET and HEAD method */
+        // not GET and HEAD method
         if (strcmp(method, "GET") && strcmp(method, "HEAD")) {
-            send(clientfd, BAD_REQUEST, strlen(BAD_REQUEST), 0);
-            if (log_fd > 0 && l_flag == 1)
-                write(log_fd, BAD_REQUEST, strlen(BAD_REQUEST) - 2);
-            formate_date(clientfd);
-            send(clientfd,SERVER_STRING,strlen(SERVER_STRING),0);
-            send(clientfd,CONTENT,strlen(CONTENT),0);
-            send(clientfd, "Content-Length: 0\n", strlen("Content-Length: 0\n"), 0);
-            if (log_fd > 0 && l_flag == 1)
-                write(log_fd, " Content-Length: 0\n", strlen(" Content-Length: 0\n"));
-            close(clientfd);
+            send_error(clientfd, BAD_REQUEST, path);
             return NULL;
         }
-        if ((n = strcmp(http_version, "HTTP/1.1")) == 0){
-            close(clientfd);
-            return NULL;
-        }
-        if ((n = strcmp(http_version, "HTTP/0.9")) == 0){
-            close(clientfd);
-            return NULL;
-        }
-    //    if ((n = strcmp(http_version, "HTTP/1.1")) !=0) { /*test for browser send http 1.1*/
+  
         if ((n = strcmp(http_version, "HTTP/1.0")) !=0) {
-            send(clientfd, BAD_REQUEST, strlen(BAD_REQUEST), 0);
-            if (log_fd > 0 && l_flag == 1)
-                write(log_fd, BAD_REQUEST, strlen(BAD_REQUEST) - 2);
-            send(clientfd,SERVER_STRING,strlen(SERVER_STRING),0);
-            send(clientfd,CONTENT,strlen(CONTENT),0);
-            send(clientfd, "Content-Length: 0\r\n", strlen("Content-Length: 0\r\n"), 0);
-            if (log_fd > 0 && l_flag == 1)
-                write(log_fd, " Content-Length: 0\n", strlen(" Content-Length: 0\n"));
-            formate_date(clientfd);
-            close(clientfd);
+            send_error(clientfd, BAD_REQUEST, path);
             return NULL;
         }
-        /* read if-modify-scince */
+        // get if-modify-scince timestamp
         while ((n = strcmp(buf, "\n")) != 0 ) {
             i = 0;
             j = 0;
-            read_line(clientfd, buf, sizeof(buf));
+            get_request_info(clientfd, buf, sizeof(buf));
             while (isspace(buf[i]))
                 i++;
             while (!isspace(buf[i]) && j < BUFSIZ - 1) {
@@ -332,12 +301,15 @@ handle_request(void* client) {
                 printf("%s\n",modify);
             }
         }
+    
         if ((n = strcmp(method, "HEAD")) == 0)
-            handle_head(clientfd,path);
+            handle_head(clientfd, path);
+    
         if((n = strcmp(method, "GET")) == 0){
             handle_get(clientfd, path, modify);
             bzero(modify, sizeof(modify));
         }
+    
         close(clientfd);
         return NULL;
 }
@@ -346,84 +318,56 @@ void handle_head(int clientfd, const char *path){
     int fd;
     
     if ((fd = open(path, O_RDONLY)) < 0){
-        send(clientfd, NOT_FOUND, strlen(NOT_FOUND), 0);
-        formate_date(clientfd);
-        send(clientfd, SERVER_STRING, strlen(SERVER_STRING), 0);
+        send_error(clientfd, FORBIDDEN, path);
     } else {
-        send(clientfd, CONNECT_SUCCESS, strlen(CONNECT_SUCCESS), 0);
-        formate_date(clientfd);
-        send(clientfd, SERVER_STRING, strlen(SERVER_STRING), 0);
-        send_timestamp(clientfd, path);
-        send(clientfd, "Content-Length: 0\r\n", strlen("Content-Length: 0\r\n"), 0);
+        send_success(clientfd, path);
     }
 }
 
 void handle_get(int clientfd, const char *path, const char *modify){
     int dp, n, c;
         char buf[TIMESIZ];
-        char content_buf[CONTENTBUF];
+        char *content_buf;
         char *home = NULL;
         char abs_path[BUFSIZ];
         struct stat st;
         struct stat sp;
         struct tm ts;
-        struct dirent **namelist;
-        /* abs_path should not out of with home */
+        // abs_path should not out of with home/
         home = (char *)malloc((size_t)BUFSIZ);
         realpath(path, abs_path);
         home = "/home";
-        /* can not get out of /home or /Users */
+        // the path should not get out of /home or /Users
         if ((n = strncmp(abs_path, home, strlen(home))) != 0 ) {
-            send(clientfd, NOT_FOUND, strlen(NOT_FOUND), 0);
-            if (log_fd > 0 && l_flag == 1)
-                write(log_fd, NOT_FOUND, strlen(NOT_FOUND) - 2);
-            formate_date(clientfd);
-            send(clientfd, SERVER_STRING, strlen(SERVER_STRING), 0);
+            send_error(clientfd, FORBIDDEN, path);
             return;
         }
         if ((dp = open(path, O_RDONLY)) < 0){
-            send(clientfd, NOT_FOUND, strlen(NOT_FOUND), 0);
-            if (log_fd > 0 && l_flag == 1)
-                write(log_fd, NOT_FOUND, strlen(NOT_FOUND) - 2);
-            formate_date(clientfd);
-            send(clientfd, SERVER_STRING, strlen(SERVER_STRING), 0);
+            send_error(clientfd, FORBIDDEN, path);
             close(dp);
             return;
         }
         if ((stat(path, &st)) == -1) {
-            perror("stat error");
+            send_error(clientfd, NOT_FOUND, path);
             return;
         }
         ts = *gmtime((time_t*)&st.st_mtimespec);
         strftime(buf, sizeof(buf), "If-Modified-Since: %a, %d %b %Y %H:%M:%S GMT\n", &ts);
         if ((n = strcmp(buf, modify)) == 0) {
-            send(clientfd, NOT_MODIFIED, strlen(NOT_MODIFIED), 0);
-            if (log_fd > 0 && l_flag == 1)
-                write(log_fd, NOT_MODIFIED, strlen(NOT_MODIFIED) - 2);
-            formate_date(clientfd);
-            send(clientfd, SERVER_STRING, strlen(SERVER_STRING), 0);
-            send_timestamp(clientfd, path);
-            send(clientfd, "Content-Length: 0\r\n", strlen("Content-Length: 0\r\n"), 0);
-            if (log_fd > 0 && l_flag == 1)
-                write(log_fd, " Content-Length: 0\n", strlen(" Content-Length: 0\n"));
+            send_error(clientfd, NOT_MODIFIED, path);
             return;
         }else {
-            send(clientfd, CONNECT_SUCCESS, strlen(CONNECT_SUCCESS), 0);
-            if (log_fd > 0 && l_flag == 1)
-                write(log_fd, CONNECT_SUCCESS, strlen(CONNECT_SUCCESS) - 2);
-            formate_date(clientfd);
-            send(clientfd, SERVER_STRING, strlen(SERVER_STRING), 0);
-            send_timestamp(clientfd, path);
-            send_content(clientfd, path);
+            send_success(clientfd, path);
         }
-        if (S_ISDIR(st.st_mode)) { /* dir use alphasort to sort*/
-            /* check index.html exist or not */
+        // For request a directory
+        if (S_ISDIR(st.st_mode)) {
             char temp[BUFSIZ];
             strcpy(temp,path);
             c = (int)strlen(temp) - 1;
             temp[c] == '/' ? strcat(temp, "index.html") : strcat(temp, "/index.html");
+            
+            // if there has an index.html
             if (stat(temp, &sp) == 0) {
-                sprintf(buf,"Content-Length: %d\r\n",(int)sp.st_size);
                 send(clientfd, buf, strlen(buf), 0);
                 if (log_fd > 0 && l_flag == 1)
                     write(log_fd,buf, strlen(buf));
@@ -437,24 +381,19 @@ void handle_get(int clientfd, const char *path, const char *modify){
                 close(dp);
                 return;
             }
-            if ((n = scandir(path, &namelist, 0, alphasort)) < 0) {
-                perror("sancdir error");
-                return;
-            }
-            content_buf[0] = '\0';
-            for (int i = 0 ;i < n; i++) {
-                if(namelist[i]->d_name[0] == '.')
-                    continue;
-                strcat(content_buf,namelist[i]->d_name);
-                strcat(content_buf,"\r\n");
-            }
+            
+            // if not have index
+            content_buf = generate_index(path, abs_path, clientfd);
+            
             sprintf(buf,"Content-Length: %d\r\n",(int)strlen(content_buf));
             send(clientfd, buf, strlen(buf), 0);
             if (log_fd > 0 && l_flag == 1)
                 write(log_fd, buf, strlen(buf));
             send(clientfd,"\r\n",strlen("\r\n"),0);
             send(clientfd, content_buf, strlen(content_buf), 0);
-        }else { /* file */
+        }
+        // For request a file
+        else {
             sprintf(buf,"Content-Length: %d\r\n",(int)st.st_size);
             send(clientfd, buf, strlen(buf), 0);
             if (log_fd > 0 && l_flag == 1)
@@ -480,29 +419,6 @@ formate_date(int clientfd){
     return 0;
 }
 
-int read_line(int socket, char *buf, int size){
-    int i = 0;
-    int len;
-    char c = '\0';
-    while (i < size - 1 && (c !='\n')) {
-        len = recv(socket, &c, 1, 0);
-        if (len > 0) {
-            if(c == '\r'){
-                len = recv(socket, &c, 1, MSG_PEEK); // MSG_PEEK test next \n without change the next recv
-                if((len > 0) && (c == '\n'))
-                    recv(socket, &c, 1, 0);
-                else
-                    c = '\n';
-            }
-            buf[i] = c;
-            ++i;
-        }else
-            c = '\n';
-    }
-    buf[i] = '\0';
-    return len;
-}
-
 int
 send_timestamp(int clientfd, const char *path){
     char buf[TIMESIZ];
@@ -519,7 +435,105 @@ send_timestamp(int clientfd, const char *path){
     return EXIT_SUCCESS;
 }
 
-void send_content(int clientfd, const char *path){
+void
+send_error(int clientfd, char *str, const char *path) {
+    send(clientfd, str, strlen(str), 0);
+    if (log_fd > 0 && l_flag == 1)
+        write(log_fd, str, strlen(str) - 2);
+    formate_date(clientfd);
+    send(clientfd, SERVER_STRING, strlen(SERVER_STRING), 0);
+    send_timestamp(clientfd, path);
+    send(clientfd, "Content-Length: 0\r\n", strlen(str) + strlen(SERVER_STRING) + strlen("Content-Length: 0\r\n"), 0);
+    if (log_fd > 0 && l_flag == 1)
+        write(log_fd, " Content-Length: 0\n", strlen(str) + strlen(SERVER_STRING) + strlen("Content-Length: 0\r\n"));
+    close(clientfd);
+}
+
+void
+send_success(int clientfd, const char *path) {
+    send(clientfd, CONNECT_SUCCESS, strlen(CONNECT_SUCCESS), 0);
+    formate_date(clientfd);
+    send(clientfd, SERVER_STRING, strlen(SERVER_STRING), 0);
+    send_timestamp(clientfd, path);
+}
+
+static const char *
+get_time_str(time_t ftime)
+{
+        static char buffer[32];
+        strftime(buffer, 32, "%F", localtime(&ftime));
+        return buffer;
+}
+
+char *
+generate_index(const char *path, const char *url, int clientfd)
+{
+    char *index_html, *pos;
+    int left, count;
+    struct dirent **dirlist;
+    struct dirent *dp;
+    int dircount, dirindex;
+    struct stat sb;
+
+    if ((index_html = (char *)malloc(CONTENTBUF)) != NULL) {
+        pos = index_html;
+        left = CONTENTBUF;
+
+        if ((count = snprintf(pos, left, STR_HTML_DOCTYPE)) < 0) {
+            send_error(clientfd, SERVER_ERROR, path);
+            return NULL;
+        } else {
+            pos += count;
+            left -= count;
+        }
+
+        if ((count = snprintf(pos, left, "<head><title>Path %s</title></head><body>Path %s<div><table class='list'><tr class='nohover'><th class='left'>Name</th><th class='right'>Size</th><th class='left'>Last Modified</th></tr>",
+                        url, url)) < 0) {
+            send_error(clientfd, SERVER_ERROR, path);
+            free(index_html);
+            return NULL;
+        } else {
+            pos += count;
+            left -= count;
+        }
+
+        dircount = scandir(path, &dirlist, 0, alphasort);
+        if (dircount < 0) {
+            send_error(clientfd, SERVER_ERROR, path);
+            free(index_html);
+            return NULL;
+        } else {
+            for (dirindex = 0; dirindex < dircount; ++dirindex) {
+                dp = dirlist[dirindex];
+                lstat(dp->d_name, &sb);
+                if (dp->d_name[0] != '.') {
+                    if (url[strlen(url) - 1] == '/')
+                        count = snprintf(pos, left, "<tr><td><a href='%s%s'>%s</a></td><td>%lu</td><td>%s</td></tr>",
+                                url, dp->d_name, dp->d_name, (long unsigned int)sb.st_size, get_time_str(sb.st_mtime));
+                    else
+                        count = snprintf(pos, left, "<tr><td><a href='%s/%s'>%s</a></td><td>%lu</td><td>%s</td></tr>",
+                                url, dp->d_name, dp->d_name, (long unsigned int)sb.st_size, get_time_str(sb.st_mtime));
+                    pos += count;
+                    left -= count;
+                }
+                free(dirlist[dirindex]);
+            }
+            free(dirlist);
+        }
+
+        if ((count = snprintf(pos, left, "</table></div></body></html>\n")) < 0) {
+            send_error(clientfd, SERVER_ERROR, path);
+            free(index_html);
+            return NULL;
+        }
+        index_html[CONTENTBUF - 1] = '\0';
+    }
+    return index_html;
+}
+
+
+void
+send_content(int clientfd, const char *path){
     char buf[BUFSIZ];
     const char *mime;
     magic_t magic;

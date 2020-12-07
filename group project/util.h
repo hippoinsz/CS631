@@ -19,6 +19,8 @@
 
 #endif /* util_h */
 
+extern int d_flag, i_flag, l_flag;
+
 int is_valid_ipv4(const char *ipv4);
 int is_valid_ipv6(const char *ipv6);
 

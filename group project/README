@@ -1,14 +1,20 @@
 11.9.2020 create the repository
 
 
-1. - Program spawns daemon(Fubin)
-2. - Server setup and binding to appropriate ports (for ipv4 and ipv6)(Fubin)
-3. - Request validation(Edward)
-4. - Parse headers(Edward)
-5. (keep track of timestamp for If-Modified-Since)(Fubin)
+1. - Program spawns daemon(Fubin)(done)
+2. - Server setup and binding to appropriate ports (for ipv4 and ipv6)(Fubin)(done)
+3. - Request validation(Edward)(done)
+4. - Parse headers(Edward)(done)
+5. (keep track of timestamp for If-Modified-Since)(Fubin)(done)
 6. - CGI forking and executing(Edward)
 7. - CGI sending information back in response(Edward)
-8. - Logging file(Fubin)
-9. - user directory handling(Edward)
-10. - directory index generation(Fubin)
-11. - regular file serving(Fubin)
+8. - Logging file(Fubin)(done)
+9. - user directory handling(Edward)(done)
+10. - directory index generation(Fubin)(done)
+11. - regular file serving(Fubin)(done)
+
+All Fubin's part has done. 
+
+For Edward, I have tried to connect him several times, use the Slacks and emails, and asked him to submit his part of code. But he did not submit. 
+
+This code can not deal with the cgi.

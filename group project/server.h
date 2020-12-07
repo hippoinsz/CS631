@@ -41,7 +41,7 @@ int createIpv6Socket(u_short *port, const char *ip);
 
 void deal_network(u_short *port, const char *ip, char *sws_dir, int log_fd);
 
-long get_request_info(int socket, char *buf, int size);
+int get_request_info(int socket, char *buf, int size);
 
 void * handle_request(void* client);
 
@@ -52,8 +52,12 @@ int formate_date(int clientfd);
 
 void handle_server(char *ip, char *port);
 
-int read_line(int socket, char *buf, int size);
-
 int send_timestamp(int clientfd, const char *path);
 
 void send_content(int clientfd, const char *path);
+
+void send_error(int clientfd, char *str, const char *path);
+
+void send_success(int clientfd, const char *path);
+
+char * generate_index(const char *path, const char *url, int clientfd);

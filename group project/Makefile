@@ -1,3 +1,4 @@
+
 TARGET := sws
 
 CC := cc
@@ -8,7 +9,8 @@ OBJS = sws.o server.o util.o
 all: ${TARGET}
 
 $(TARGET) : $(OBJS)
-        $(CC) ${CFLAGS} ${OBJS} -o ${TARGET}
+	$(CC) ${CFLAGS} ${OBJS} -o ${TARGET}
 
 clean:
-        rm -rf $(TARGET) $(OBJS)
+	rm -rf $(TARGET) $(OBJS)
+

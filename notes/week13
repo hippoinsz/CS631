@@ -1,0 +1,17 @@
+Lecture 13
+===============
+
+Before class
+---------------
+I carefully read the slides on the webside.
+I wathc the videoes of this lecture.
+
+The nature of UNIX being a multitasking multiuser OS implies the need for user privileges, file permissions, process ownership and management of all finite resources.
+
+I finish part of the group project.
+
+After class
+----------------
+ACLs are stored as Extended Attributes and thus require support of the file system.
+Ordering of ACLs may be relevant — experiment with different users and groups to
+verify the impact of the order.

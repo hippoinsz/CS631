@@ -1,6 +1,13 @@
 Lecture 3
 =============
+I read the slites and watch the viedos on the Youtube.
+
+Learn that there are many attributes for files. And uid and gid control file permissions.
+
+Learn how ls(1) can display most of the information from the struct stat. stat(1) gets us the rest in a more flexible way.
 
 Before class:
 -------------
+Only root and the owner of a file can change its permissions.
 
+Only root can change the owner of a file, but the owner may change the group ownership of a file.

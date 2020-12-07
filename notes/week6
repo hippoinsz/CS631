@@ -1,0 +1,13 @@
+Lecture 6
+==============
+
+Before class
+--------------
+I carefully read the slites and watch the viedos on the Youtube.
+
+I knows the lays of a process memory. And how a program startup and terminate.
+Also learning how to control a process through pid.
+
+After class
+-------------
+After creating a new process via fork(2), the parent process can wait(2) for the child process to reap its exit status and resource utilization; failure to do so will create a zombie process until the parent is terminated, at which point init will reap it.

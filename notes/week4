@@ -1,0 +1,16 @@
+Lecture 4
+=================
+
+Before class:
+-----------------
+I carefully read the course website and syllabus.
+I watch the videoes of the this lecture.
+
+I learn that there are seven file styles, such as normal file, directory, links,pipe and so on.
+
+And also learn different times of the file, modify time, create time and last data access time
+
+After class:
+-----------------
+Important take-away:
+To move a file within a single filesystem, we can just ”move” the directory entry (actually done by creating a new entry, and deleting the old one).

@@ -1,0 +1,10 @@
+Lecture 7
+==============
+
+Before class
+--------------
+From the slides and videos, I learn that signals can be accept, ignore, catch and block. And some signal cannot be ignored.
+
+After class
+--------------
+Signals are notifications of asynchronous events; delivery is similar to a hardware interrupt (current context is saved, a new context is built).

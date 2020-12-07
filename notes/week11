@@ -1,0 +1,12 @@
+Lecture 11
+=================
+
+Before class
+-----------------
+This time I learn how our code compile to an executable file. And the links between the codes. And I also know the shared libraries.
+
+After class
+-----------------
+Static libraries let you build statically linked executables containing all the code needed to run the program.
+Dynamic libraries let you define which code should be pulled in at execution time.
+The behavior of dynamically linked executables can be influenced by changing the dynamic library without requiring the executable to be re-compiled or re-linked.

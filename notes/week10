@@ -1,0 +1,10 @@
+Lecture 10
+================
+
+Before class
+----------------
+The slides and videos talk about the daemon process. A Dæmon processes usually live for long time. And they are started at boot time.
+
+After class
+----------------
+We learn different protocal of Hypertest transfer. The most common protocol is HTTP which we will use at our group project.

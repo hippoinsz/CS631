@@ -1,0 +1,15 @@
+Lecture 12
+================
+
+Before class
+----------------
+I read the slites and watch the viedos on the Youtube.
+
+This lecture talks about locking and non-blocking I/O.
+Non-blocking I/O lets us issue an I/O operation and not have it block forever. If the operation cannot be completed, return is made immediately with an error noting that the operating would have blocked (EWOULDBLOCK or EAGAIN).
+
+After class
+----------------
+syslog:
+De-facto standard for message logging on Unix systems since the 1980s.
+Various newer versions with many new features (TCP, TLS, logging to a database or a filter, …) available, e.g., syslog-ng, rsyslog.

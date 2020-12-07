@@ -1,0 +1,18 @@
+Lecture 9
+================
+
+Before class
+----------------
+In this segment, I learn the socket. How can we create a server through progrem.
+The different bettween the ipv4 and ipv6. How do we create a listen of a port.
+
+After class
+----------------
+The steps to create a server:
+1. create socket using socket(2)
+2. attach to a socket using bind(2)
+3. both processes need to agree on the name to use
+4. these files are only used for rendezvous, not for message delivery
+5. sockets are represented as file descriptors, so you can use read(2) and write(2)
+6. dedicated system calls like recv(2) and send(2) etc. offer specific functionality
+7. after communication, sockets must be removed using unlink(2)

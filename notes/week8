@@ -1,0 +1,10 @@
+Lecture 8
+================
+
+Before class
+----------------
+This class I learn the ipc(interprocess communication). Ipc can be asynchronous or synchronous. There are severl ways to make it success, such as signals, pipes, fifos, sockets and so on.
+
+After class
+----------------
+Learn more about pipes.
